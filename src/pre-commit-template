@@ -14,27 +14,41 @@ import shutil
 REQUIRED_COMMANDS: list[str] = ['git']
 
 
-def process_filtered_files(filtered_files) -> None:
+def display_errors(errors: list) -> None:
     """
-    Process the list of filtered files to search for sensitive AWS credentials.
+    _summary_.
+
+    Arguments:
+        errors (list): The list of errors to display.
     """
-    errors_verbose: list = []
-    errors = 0
+    print("Files to be committed contain possible sensitive information:\n%s",
+          "\n".join(errors))
+
+
+def process_filtered_files(filtered_files: list) -> None:
+    """
+    _summary_.
+
+    Arguments:
+        filtered_files (list): _description_
+    """
+    errors: list = []
+    error_count: int = 0
 
     for ff in filtered_files:
         print(f"Processing: {ff}")
 
-    if errors == 0:
-        return
-
-    print("Files to be committed contain possible sensitive information:\n%s",
-          "\n".join(errors_verbose))
-    sys.exit(1)
+    if error_count:
+        display_errors(errors)
+    return errors
 
 
-def filter_staged_files(staged_files) -> None:
+def filter_staged_files(staged_files: list) -> None:
     """
     Filter staged files for those that are readable.
+
+    Arguments:
+        staged_files (list): _description_
     """
     filtered_files: list = [st for st in staged_files if os.access(st, os.R_OK)]
     if filtered_files:
@@ -47,6 +61,9 @@ def get_repo_root(git_path: str) -> str:
     """
     Identifies the root directory of the Git repository by querying Git's environment.
     Returns the absolute path of the repository's root.
+
+    Arguments:
+        git_path (str): _description_
 
     Returns:
         str: The path to the repository root.
@@ -73,6 +90,12 @@ def get_repo_root(git_path: str) -> str:
 def list_staged_files(git_path: str) -> list[str]:
     """
     List all staged files in the current git repository.
+
+    Arguments:
+        git_path (str): _description_
+
+    Returns:
+        list[str]: _description_
     """
     repo_root: str = get_repo_root(git_path)
     os.chdir(repo_root)
@@ -91,6 +114,11 @@ def list_staged_files(git_path: str) -> list[str]:
 def check_prerequisites() -> dict:
     """
     Ensure that all required commands are installed and available in the PATH.
+
+    _extended_summary_
+
+    Returns:
+        dict: _description_
     """
     errors = 0
     errors_verbose: list = []
