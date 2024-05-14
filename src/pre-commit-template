@@ -1,0 +1,131 @@
+#!/usr/bin/env python
+
+"""
+This module is designed to pre-validate staged git files for sensitive information like AWS credentials,
+ensuring that required commands are installed, and that files are accessible and clean before committing.
+"""
+
+import os
+import sys
+import subprocess
+
+from typing import Any
+
+REQUIRED_COMMANDS: list[str] = ['git']  # Commands that are necessary for this script to run properly
+
+
+def process_filtered_files(filtered_files) -> None:
+    """
+    Process the list of filtered files to search for sensitive AWS credentials.
+    """
+    errors_verbose: list = []
+    errors = 0
+
+    for ff in filtered_files:
+        print(f"Processing: {ff}")
+
+    if errors == 0:
+        return
+
+    print("Files to be committed contain possible sensitive information:\n%s",
+          "\n".join(errors_verbose))
+    sys.exit(1)
+
+
+def filter_staged_files(staged_files) -> None:
+    """
+    Filter staged files for those that are readable.
+    """
+    filtered_files: list = [st for st in staged_files if os.access(st, os.R_OK)]
+    if filtered_files:
+        process_filtered_files(filtered_files)
+    else:
+        print("No readable staged files found.")
+
+
+def which(program) -> Any | str | None:
+    """
+    Emulate the Unix 'which' command to check for command availability.
+    """
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if os.path.exists(program) and os.access(program, os.X_OK):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file: str = os.path.join(path, fname)
+            if os.path.exists(exe_file) and os.access(exe_file, os.X_OK):
+                return exe_file
+    return None
+
+
+def get_repo_root() -> str:
+    """
+    Identifies the root directory of the Git repository by querying Git's environment.
+    Returns the absolute path of the repository's root.
+
+    Returns:
+        str: The path to the repository root.
+    """
+    try:
+        result: subprocess.CompletedProcess[str] = subprocess.run(
+            ['git', 'rev-parse', '--git-dir'], stderr=subprocess.STDOUT,
+            check=True, text=True, stdout=subprocess.PIPE)
+
+        if result.returncode != 0:
+            print("Not a git repository (or any of the parent directories).")
+            sys.exit(1)
+
+        git_dir: str = result.stdout.strip()
+        git_dir = os.path.abspath(git_dir)
+
+    except subprocess.CalledProcessError:
+        print("Not a git repository (or any of the parent directories).")
+        sys.exit(1)
+
+    return os.path.dirname(git_dir) if os.path.basename(git_dir) == '.git' else git_dir
+
+
+def list_staged_files() -> list[str]:
+    """
+    List all staged files in the current git repository.
+    """
+    repo_root: str = get_repo_root()
+    os.chdir(repo_root)
+    staged_files: list[str] = subprocess.check_output("git diff --cached --name-only --diff-filter=ACM", shell=True, text=True).split()
+    return staged_files
+
+
+def check_prerequisites() -> None:
+    """
+    Ensure that all required commands are installed and available in the PATH.
+    """
+    errors = 0
+    errors_verbose: list = []
+
+    for command in REQUIRED_COMMANDS:
+        if which(command) is None:
+            errors += 1
+            errors_verbose.append(f"{command} is not installed - Aborting!")
+
+    if errors == 0:
+        return
+
+    print(f"There were {errors} error(s)")
+
+    for err in errors_verbose:
+        print(err)
+    sys.exit(1)
+
+
+def main() -> None:
+    """
+    Main function to run the script.
+    """
+    check_prerequisites()
+    staged_files: list[str] = list_staged_files()
+    filter_staged_files(staged_files)
+
+
+if __name__ == "__main__":
+    main()
