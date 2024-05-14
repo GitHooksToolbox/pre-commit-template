@@ -7,9 +7,8 @@ ensuring that required commands are installed, and that files are accessible and
 
 import os
 import sys
-import subprocess
-
-from typing import Any
+import subprocess  # nosec B404
+import shutil
 
 REQUIRED_COMMANDS: list[str] = ['git']  # Commands that are necessary for this script to run properly
 
@@ -43,23 +42,7 @@ def filter_staged_files(staged_files) -> None:
         print("No readable staged files found.")
 
 
-def which(program) -> Any | str | None:
-    """
-    Emulate the Unix 'which' command to check for command availability.
-    """
-    fpath, fname = os.path.split(program)
-    if fpath:
-        if os.path.exists(program) and os.access(program, os.X_OK):
-            return program
-    else:
-        for path in os.environ["PATH"].split(os.pathsep):
-            exe_file: str = os.path.join(path, fname)
-            if os.path.exists(exe_file) and os.access(exe_file, os.X_OK):
-                return exe_file
-    return None
-
-
-def get_repo_root() -> str:
+def get_repo_root(git_path: str) -> str:
     """
     Identifies the root directory of the Git repository by querying Git's environment.
     Returns the absolute path of the repository's root.
@@ -68,8 +51,8 @@ def get_repo_root() -> str:
         str: The path to the repository root.
     """
     try:
-        result: subprocess.CompletedProcess[str] = subprocess.run(
-            ['git', 'rev-parse', '--git-dir'], stderr=subprocess.STDOUT,
+        result: subprocess.CompletedProcess[str] = subprocess.run(  # nosec B603
+            [git_path, 'rev-parse', '--git-dir'], stderr=subprocess.STDOUT,
             check=True, text=True, stdout=subprocess.PIPE)
 
         if result.returncode != 0:
@@ -86,30 +69,42 @@ def get_repo_root() -> str:
     return os.path.dirname(git_dir) if os.path.basename(git_dir) == '.git' else git_dir
 
 
-def list_staged_files() -> list[str]:
+def list_staged_files(git_path: str) -> list[str]:
     """
     List all staged files in the current git repository.
     """
-    repo_root: str = get_repo_root()
+    repo_root: str = get_repo_root(git_path)
     os.chdir(repo_root)
-    staged_files: list[str] = subprocess.check_output("git diff --cached --name-only --diff-filter=ACM", shell=True, text=True).split()
-    return staged_files
+
+    try:
+        result: subprocess.CompletedProcess[str] = subprocess.run(  # nosec B60
+                [git_path, 'diff', '--cached', '--name-only', '--diff-filter=ACM'],
+                check=True, text=True, stdout=subprocess.PIPE)
+        staged_files: list[str] = result.stdout.split()
+        return staged_files
+    except subprocess.CalledProcessError:
+        print("Failed to list staged files.")
+        sys.exit(1)
 
 
-def check_prerequisites() -> None:
+def check_prerequisites() -> dict:
     """
     Ensure that all required commands are installed and available in the PATH.
     """
     errors = 0
     errors_verbose: list = []
+    command_paths: dict = {}
 
     for command in REQUIRED_COMMANDS:
-        if which(command) is None:
+        full_path: str | None = shutil.which(command)
+        if full_path is None:
             errors += 1
-            errors_verbose.append(f"{command} is not installed - Aborting!")
+            errors_verbose.append(f"{command} is not installed - Aborting")
+        else:
+            command_paths[command] = full_path
 
     if errors == 0:
-        return
+        return command_paths
 
     print(f"There were {errors} error(s)")
 
@@ -122,8 +117,10 @@ def main() -> None:
     """
     Main function to run the script.
     """
-    check_prerequisites()
-    staged_files: list[str] = list_staged_files()
+    command_paths: dict = check_prerequisites()
+    git_path: str = command_paths['git']
+
+    staged_files: list[str] = list_staged_files(git_path)
     filter_staged_files(staged_files)
 
 

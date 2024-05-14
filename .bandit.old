@@ -1,0 +1,14 @@
+[bandit]
+# Skip the venv/ directory when scanning.
+exclude: venv
+
+# Skip the following tests:
+#
+# - [B404:blacklist] Consider possible security implications associated with subprocess module.
+#   Severity: Low   Confidence: High
+#       There are other warnings specific to subprocess calls (e.g. B603, B607)
+#
+# - [B607:start_process_with_partial_path] Starting a process with a partial executable path
+#   Severity: Low   Confidence: High
+#       For portability, we use 'terraform' and 'git' instead of the full executable filepaths.
+skips: B404,B607

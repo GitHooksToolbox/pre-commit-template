@@ -7,7 +7,7 @@
     <a href="https://github.com/GitHooksToolbox/pre-commit-template/actions/workflows/cicd.yml">
         <img src="https://img.shields.io/github/actions/workflow/status/GitHooksToolbox/pre-commit-template/cicd.yml?branch=master&label=build%20status&style=for-the-badge" alt="Github Build Status" />
     </a>
-    <a href="https://github.com/GitHooksToolbox/pre-commit-template/blob/main/LICENSE.md">
+    <a href="https://github.com/GitHooksToolbox/pre-commit-template/blob/master/LICENSE.md">
         <img src="https://img.shields.io/github/license/GitHooksToolbox/pre-commit-template?color=blue&label=License&style=for-the-badge" alt="License">
     </a>
     <a href="https://github.com/GitHooksToolbox/pre-commit-template">

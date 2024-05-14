@@ -63,7 +63,6 @@ jobs:
       - name: Run Awesomebot
         env:
           FLAGS: "default"
-          EXCLUDE_FILES: "CHANGELOG.md"
           WHITELIST: "https://img.shields.io"
         run: bash <(curl -s https://raw.githubusercontent.com/CICDToolbox/awesomebot/master/pipeline.sh)
 
